@@ -396,7 +396,8 @@ def evaluate_coco(model, dataset, coco, eval_type="bbox", limit=0, image_ids=Non
 class mAPCallback(keras.callbacks.ModelCheckpoint):
     def __init__(self, filepath, monitor='val_loss', verbose=0,
                  save_best_only=False, save_weights_only=False,
-                 mode='auto', period=1, data_dir=None, model_dir=None):
+                 mode='auto', period=1, data_dir=None, model_dir=None,
+                 min_maskap=0.377):
         super().__init__(filepath, monitor, verbose, save_best_only,
                          save_weights_only, mode, period)
         assert data_dir
@@ -410,6 +411,7 @@ class mAPCallback(keras.callbacks.ModelCheckpoint):
         self.mAP_config.BATCH_SIZE = 1
         self.mAP_eval_model = modellib.MaskRCNN(
             mode="inference", model_dir=model_dir, config=self.mAP_config)
+        self.min_maskap=min_maskap
 
     def on_epoch_end(self, epoch, logs=None):
         super().on_epoch_end(epoch, logs)
@@ -454,7 +456,7 @@ class mAPCallback(keras.callbacks.ModelCheckpoint):
 
         mAP_score = np.mean(ap_list)
         print("Validation mAP: {:.4f}".format(mAP_score))
-        if mAP_score >= 0.377:  # MLPerf target.
+        if mAP_score >= self.min_maskap:  # MLPerf target.
             self.model.stop_training = True
 
 
@@ -499,6 +501,10 @@ if __name__ == '__main__':
                         metavar="<True|False>",
                         help='Automatically download and unzip MS-COCO files (default=False)',
                         type=bool)
+    parser.add_argument('--min_maskap', required=False,
+                        default=0.377,
+                        help='Terminate after mask average precision achieved',
+                        type=float)
     args = parser.parse_args()
     print("Command: ", args.command)
     print("Model: ", args.model)
@@ -577,7 +583,8 @@ if __name__ == '__main__':
                     augmentation=augmentation,
                     custom_checkpointer=mAPCallback,
                     custom_checkpoint_kwargs={"data_dir": args.dataset,
-                                              "model_dir": args.logs},)
+                                              "model_dir": args.logs,
+                                              "min_maskap": args.min_maskap})
 
         # Training - Stage 2
         # Finetune layers from ResNet stage 4 and up
@@ -589,7 +596,8 @@ if __name__ == '__main__':
                     augmentation=augmentation,
                     custom_checkpointer=mAPCallback,
                     custom_checkpoint_kwargs={"data_dir": args.dataset,
-                                              "model_dir": args.logs},)
+                                              "model_dir": args.logs,
+                                              "min_maskap": args.min_maskap})
 
         # Training - Stage 3
         # Fine tune all layers
@@ -601,7 +609,8 @@ if __name__ == '__main__':
                     augmentation=augmentation,
                     custom_checkpointer=mAPCallback,
                     custom_checkpoint_kwargs={"data_dir": args.dataset,
-                                              "model_dir": args.logs},)
+                                              "model_dir": args.logs,
+                                              "min_maskap": args.min_maskap})
 
     elif args.command == "evaluate":
         # Validation dataset
