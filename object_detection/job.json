@@ -1,0 +1,41 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Azure/BatchAI/master/schemas/2017-09-01-preview/job.json",
+    "properties": {
+        "containerSettings": {
+            "imageSourceRegistry": {
+                "image": "MLPERF_IMAGE_NAME",
+                "serverUrl": "mlperfregistry.azurecr.io",
+                "credentials": {
+                    "username": "mlperfregistry",
+                    "password": "CamocqUfj41tIotScXKr4/pY7NGirpBV"
+                }
+            }
+        },
+        "customToolkitSettings": {
+            "commandLine": "cp -r $AZ_BATCHAI_JOB_MOUNT_ROOT/data /coco_dataset && cp -r $AZ_BATCHAI_JOB_MOUNT_ROOT/weights /weights && cd /research/object_detection && bash ./run_and_time.sh MLPERF_SEED"
+        },
+        "nodeCount": 1,
+        "stdOutErrPathPrefix": "$AZ_BATCHAI_JOB_MOUNT_ROOT/logs",
+        "mountVolumes": {
+            "azureFileShares": [
+                {
+                    "azureFileUrl": "https://mlperfstorage.file.core.windows.net/logs",
+                    "relativeMountPath": "logs"
+                }
+            ],
+				"azureBlobFileSystems": [
+                {
+                    "accountName": "mlperfstorage",
+                    "containerName": "coco",
+                    "relativeMountPath": "data"
+                },
+                {
+                    "accountName": "mlperfstorage",
+                    "containerName": "coco-resnet50-weights",
+                    "relativeMountPath": "weights"
+                }
+            ]
+        } 
+    }
+}
+
